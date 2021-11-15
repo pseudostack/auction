@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Bidder</title>
+  </head>
+  <body>
+    <h1>Bidder</h1>
+
+    <p id="welcome_msg" style="display:none;">Waiting for auction to begin</p>
+
+    <div id="form_div" style="display: none;">
+      <form id="bid" action="">
+        <label id="idesc">item description: </label> <label id="item_desc"></label><br>
+        <label id="ctb">Current Top Bid: </label> <label id="current_top_bid">0</label><br>
+        <label id="tbn">Current Top Bidder: </label> <label id="top_bidder_name">starting bid</label><br>
+        <label for="bn">Name:</label> <input type="text" id="bidder_name"> <br />
+        <label for="bp">Bid:</label> <input type="text" id="bid_price"> <br />
+        <label id="auction_timer" style="display:none;"></label><br>
+        <input type="submit">
+      </form>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+
+    <script>
+
+    // Make the connection
+    var socket = io();
+
+    //emit a hello ack to find out information about auction... i.e., whether
+    //there is already one in progress or not
+    socket.emit("hello",
+      { });
+
+    //upon recieving an ack in response to our hello
+    socket.on("ack", function(ack_details)
+
+    //then if an auction is in progress
+{ if (ack_details.auction_in_progress == true)
+  {
+      //disable welcome message and show bid form
+            $("#welcome_msg").hide();
+    $("#form_div").show();
+
+    //intiailize our labels to data from the auction in progress
+    $("#item_desc").text(ack_details.item_desc);
+    $("#current_top_bid").text(ack_details.bid_price);
+    $("#top_bidder_name").text(ack_details.bidder_name);
+            $("#auction_timer").show();
+  }
+  //otherwise show the welcome page
+  else {
+            $("#welcome_msg").show();
+  }
+
+});
+
+//upon recieving timer info
+socket.on("timer", function(timer_details)
+//if the auction is not ended, then show the remaining time
+{ if (timer_details.timer >= 0)
+{
+        $("#auction_timer").text(timer_details.timer);
+}
+});
+
+//upon recieving confirmation that the auction has ended
+socket.on("auction_complete", function(timer_details)
+{
+  //update timer text to "auction complete"
+  $("#auction_timer").text("Auction complete");
+
+  //wait one second and then call our function to reintlize the bidder page
+  setTimeout(function(){
+          reinitialize();
+  }, 1000)
+});
+
+//this function is used to reinizlie our bidder page
+//we will not reset the bidder name as it is presumed it is the same bidder
+function reinitialize()
+{
+  $("#item_desc").text('');
+  $("#current_top_bid").text('');
+  $("#top_bidder_name").text('starting bid');
+  $("#bid_price").val('');
+  $("#auction_timer").text('');
+
+//additionally we will show our welcome message and hide the bidder form
+//until a new auction has been started
+$("#welcome_msg").show();
+$("#form_div").hide();
+}
+
+      // if auction started
+      socket.on("startauction", function(auction_details)
+      {
+        //show our bidder form and hide the welcome message
+        $("#form_div").show();
+        $("#welcome_msg").hide();
+
+        //additionally, show auction info including the timer
+        $("#item_desc").text(auction_details.item_desc);
+        $("#current_top_bid").text(auction_details.bid_price);
+        $("#auction_timer").show();
+      });
+
+      //upon receiving new bid data
+      socket.on("bid_data", function(bid_data_received)
+      {
+        //show the top biddders bid and their name
+        $("#current_top_bid").text(bid_data_received.bid_price);
+        $("#top_bidder_name").text(bid_data_received.bidder_name);
+      });
+
+      // Submit the bid, if bidder clicks submit button
+      $("#bid").submit(function(){
+
+        // Send the bidders name and bid to the server
+        socket.emit("bid",
+          {bidder_name: $("#bidder_name").val(),
+           bid_price: $("#bid_price").val()
+         });
+        // Override the default form submit behaviour
+        return false;
+      });
+
+    </script>
+  </body>
+</html>

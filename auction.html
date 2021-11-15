@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Auction</title>
+  </head>
+  <body>
+    <h1>Auction</h1>
+
+    <div id="auction_form_div">
+    <form id="auction" action="">
+      <label for="item_desc_lbl">item description:</label> <input type="text" id="item_desc"> <br />
+      <label for="start_bid_price_lbl">starting bid price</label> <input type="text" id="start_bid_price"> <br />
+      <input type="submit">
+    </form>
+</div>
+
+<div id="auction_in_place_div" style="display: none;">
+  <label id="idesc">item description: </label> <label id="item_desc_lbl"></label><br>
+  <label id="ctb">Current Top Bid: </label> <label id="current_top_bid">0</label><br>
+  <label id="tbn">Current Top Bidder: </label> <label id="top_bidder_name">starting bid</label><br>
+  <label id="auction_timer" style="display:none;"></label><br>
+</div>
+
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <script>
+
+    // Make the connection
+    var socket = io();
+    var item_desc;
+
+
+    function reinitialize()
+    {
+      $("#item_desc").val('');
+      $("#start_bid_price").val('');
+      $("#item_desc_lbl").text('');
+      $("#current_top_bid").text('');
+      $("#top_bidder_name").text('starting bid');
+      $("#auction_timer").text('');
+
+      $('#auction_form_div').show();
+      $('#auction_in_place_div').hide();
+    }
+
+    socket.on("bid_data", function(bid_data_received)
+    {
+      console.log("oi");
+      $("#current_top_bid").text(bid_data_received.bid_price);
+      $("#top_bidder_name").text(bid_data_received.bidder_name);
+
+    });
+
+    socket.on("auction_complete", function(timer_details)
+    {
+      console.log("Auction Ended!");
+      $("#auction_timer").text("Auction complete");
+
+      setTimeout(function(){
+
+              reinitialize();
+      }, 1000)
+
+
+    });
+
+
+
+
+    socket.on("timer", function(timer_details)
+
+
+    { if (timer_details.timer >= 0)
+    {
+            $("#auction_timer").text(timer_details.timer);
+    }
+    else {
+      console.log("Auction Ended!");
+    }
+
+
+    });
+
+
+    // submit handler
+    $("#auction").submit( function(){
+
+      item_desc = $('#item_desc').val();
+
+      // submit a question message
+      socket.emit("start_auction",
+       {item_desc: $("#item_desc").val(),
+        start_bid_price: $("#start_bid_price").val()
+
+       });
+
+       $('#auction_form_div').hide();
+       $('#auction_in_place_div').show();
+       $('#auction_timer').show();
+
+             $("#current_top_bid").text($("#start_bid_price").val());
+
+
+         $("#item_desc_lbl").text(item_desc);
+
+      // override the default submit behaviour
+      return false;
+
+    })
+
+    </script>
+  </body>
+</html>
